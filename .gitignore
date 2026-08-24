@@ -27,8 +27,6 @@ share/python-wheels/
 MANIFEST
 
 # Model weights and large files
-*.pt
-*.ckpt
 *.zip
 
 # OS generated files
