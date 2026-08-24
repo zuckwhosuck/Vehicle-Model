@@ -1,0 +1,14 @@
+torch
+torchvision
+ultralytics
+git+https://github.com/baudm/parseq.git
+opencv-python
+Pillow
+numpy
+tqdm
+fastapi
+uvicorn
+python-multipart
+pytorch-lightning
+timm
+nltk
