@@ -12,3 +12,4 @@ python-multipart
 pytorch-lightning
 timm
 nltk
+python-dotenv

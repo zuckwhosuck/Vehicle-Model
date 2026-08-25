@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoVision | Next-Gen ANPR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-color: #0F172A;
+            --surface: rgba(30, 41, 59, 0.7);
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(79, 70, 229, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.15), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Nav & Hero */
+        header {
+            width: 100%;
+            padding: 3rem 5%;
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60A5FA, #A78BFA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            max-width: 650px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Main App Container */
+        .app-container {
+            width: 90%;
+            max-width: 900px;
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeInUp 0.8s ease-out;
+            margin-bottom: 4rem;
+        }
+
+        .upload-section {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .upload-section:hover, .upload-section.dragover {
+            border-color: var(--primary);
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .upload-section input[type="file"] {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 2.5rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px -1px rgba(79, 70, 229, 0.6);
+        }
+
+        .btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Results Section */
+        .results {
+            display: none;
+            margin-top: 3rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .result-card {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .result-header {
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .plate-display {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .plate-text {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #FCD34D;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            letter-spacing: 2px;
+            border: 2px solid #FCD34D;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.6rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .image-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .toggle-container {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 0.5rem;
+            border-radius: 2rem;
+            display: flex;
+            gap: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .toggle-btn {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 1.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #10B981;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: 0.3s;
+            font-weight: 600;
+            z-index: 1000;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .loader {
+            display: none;
+            margin-top: 1.5rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>AutoVision ANPR</h1>
+        <p>Enterprise-grade Automatic Number Plate Recognition. Secure, lightning-fast, and powered by state-of-the-art YOLO and PARSeq deep learning models.</p>
+    </header>
+
+    <div class="app-container">
+        <form id="uploadForm">
+            <div class="upload-section" id="dropzone">
+                <input type="file" id="images" name="images" accept="image/*" multiple required>
+                <div class="upload-icon">📸</div>
+                <h3>Drag & Drop your images here</h3>
+                <p style="color: var(--text-muted); margin-top: 0.5rem;">or click to browse from your device</p>
+                <div id="file-list" style="margin-top: 1rem; font-weight: bold; color: var(--primary);"></div>
+            </div>
+            
+            <div style="text-align: center;">
+                <button type="submit" class="btn" id="submitBtn">Analyze Images</button>
+                <div class="loader" id="loader">Processing images... Please wait.</div>
+            </div>
+        </form>
+
+        <div class="results" id="resultsSection">
+            <h2 style="margin-bottom: 1.5rem; color: white;">Detection Results</h2>
+            <div id="resultCards"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Copied to clipboard! ✓</div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('images');
+        const dropzone = document.getElementById('dropzone');
+        const fileList = document.getElementById('file-list');
+        const submitBtn = document.getElementById('submitBtn');
+        const loader = document.getElementById('loader');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultCards = document.getElementById('resultCards');
+        const toast = document.getElementById('toast');
+
+        // Original image URLs mapping
+        let originalImagesMap = {};
+
+        // Drag and drop styles
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+        });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.classList.add('dragover'), false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragover'), false);
+        });
+
+        fileInput.addEventListener('change', handleFiles);
+        dropzone.addEventListener('drop', (e) => {
+            fileInput.files = e.dataTransfer.files;
+            handleFiles();
+        });
+
+        function handleFiles() {
+            const files = fileInput.files;
+            if(files.length > 0) {
+                fileList.innerText = `${files.length} file(s) selected ready for analysis.`;
+                // Store object URLs for toggling
+                originalImagesMap = {};
+                for(let i=0; i<files.length; i++) {
+                    originalImagesMap[files[i].name] = URL.createObjectURL(files[i]);
+                }
+            } else {
+                fileList.innerText = "";
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(fileInput.files.length === 0) return;
+
+            submitBtn.disabled = true;
+            submitBtn.style.display = 'none';
+            loader.style.display = 'block';
+            resultsSection.style.display = 'none';
+            resultCards.innerHTML = '';
+
+            const formData = new FormData();
+            for(let i = 0; i < fileInput.files.length; i++) {
+                formData.append("images", fileInput.files[i]);
+            }
+
+            try {
+                // Test locally with the hardcoded API key since it's the test UI
+                const apiKey = 'my_super_secret_key_123!'; 
+
+                const response = await fetch('/api/predict_plates', {
+                    method: 'POST',
+                    headers: { 'X-API-Key': apiKey },
+                    body: formData
+                });
+                
+                if(!response.ok) throw new Error("API Error: " + response.statusText);
+                const data = await response.json();
+                
+                renderResults(data.images);
+            } catch(error) {
+                alert(error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.style.display = 'inline-block';
+                loader.style.display = 'none';
+            }
+        });
+
+        function renderResults(images) {
+            resultsSection.style.display = 'block';
+            
+            images.forEach((img, index) => {
+                const originalUrl = originalImagesMap[img.filename];
+                const blurredUrl = img.blurred_base64 || originalUrl;
+                const plateText = img.plate_found ? img.prediction : 'NO PLATE DETECTED';
+                
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <div class="result-header">
+                        <div>
+                            <h3 style="margin-bottom: 0.5rem; color: white; font-size: 1.2rem;">${img.filename}</h3>
+                            <span style="color: var(--text-muted); font-size: 0.95rem;">
+                                ${img.plate_found ? 'Detection Confidence: <strong style="color: #10B981;">' + (img.confidence * 100).toFixed(1) + '%</strong>' : 'No plate could be confidently detected.'}
+                            </span>
+                        </div>
+                        <div class="plate-display">
+                            <div class="plate-text" style="${!img.plate_found ? 'color: #EF4444; border-color: #EF4444;' : ''}">${plateText}</div>
+                            ${img.plate_found ? `
+                            <button class="copy-btn" onclick="copyToClipboard('${plateText}')" title="Copy to Clipboard">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="image-container">
+                        <img id="img-${index}" src="${blurredUrl}" alt="Analyzed image">
+                        ${img.plate_found ? `
+                        <div class="toggle-container">
+                            <button class="toggle-btn" onclick="toggleImage('img-${index}', '${originalUrl}', '${blurredUrl}', false, this)">Original</button>
+                            <button class="toggle-btn active" onclick="toggleImage('img-${index}', '${originalUrl}', '${blurredUrl}', true, this)">Blurred</button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                resultCards.appendChild(card);
+            });
+        }
+
+        window.toggleImage = function(imgId, originalUrl, blurredUrl, showBlurred, btnElement) {
+            const img = document.getElementById(imgId);
+            img.src = showBlurred ? blurredUrl : originalUrl;
+            
+            const container = btnElement.parentElement;
+            const buttons = container.querySelectorAll('.toggle-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2500);
+            });
+        }
+    </script>
+</body>
+</html>

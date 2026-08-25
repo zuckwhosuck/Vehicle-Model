@@ -7,9 +7,13 @@ import asyncio
 import numpy as np
 from PIL import Image
 from collections import defaultdict
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
+import os
+from dotenv import load_dotenv
+load_dotenv()
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, Security, HTTPException, status, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security.api_key import APIKeyHeader
 from torchvision import transforms
 from ultralytics import YOLO
 from contextlib import asynccontextmanager
@@ -84,13 +88,27 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Restrict origins in production! Loaded strictly from environment variables.
+ALLOWED_ORIGINS = os.environ["ALLOWED_ORIGINS"].split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust in production (e.g., ["http://localhost:3000"])
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+SECRET_API_KEY = os.environ["API_KEY"]
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_api_key(api_key_header: str = Security(api_key_header)):
+    if api_key_header == SECRET_API_KEY:
+        return api_key_header
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or missing API Key",
+    )
 
 
 import base64
@@ -115,7 +133,7 @@ def blur_plate(image, box):
     return image
 
 @app.post("/api/predict_plates")
-async def predict_plates(images: list[UploadFile] = File(...)):
+async def predict_plates(images: list[UploadFile] = File(...), api_key: str = Depends(verify_api_key)):
     """
     Endpoint for JuniGadi to send bulk images synchronously.
     Returns the final predicted plate and the base64 encoded blurred images.
@@ -194,112 +212,6 @@ def health_check():
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_ui():
-    html_content = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ANPR System Tester</title>
-        <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; padding: 2rem; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-            h1 { color: #1f2937; margin-bottom: 1.5rem; }
-            .form-group { margin-bottom: 1.5rem; }
-            label { display: block; font-weight: bold; margin-bottom: 0.5rem; color: #4b5563; }
-            input[type="text"], input[type="file"] { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; box-sizing: border-box; }
-            button { background-color: #2563eb; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: bold; cursor: pointer; }
-            button:hover { background-color: #1d4ed8; }
-            #status { margin-top: 1.5rem; padding: 1rem; border-radius: 4px; background-color: #eff6ff; color: #1e40af; display: none; }
-            .note { font-size: 0.875rem; color: #6b7280; margin-top: 0.5rem; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>ANPR System Tester</h1>
-            <p style="color: #4b5563; margin-bottom: 2rem;">Upload car images to test the FastAPI ANPR backend directly.</p>
-            
-            <form id="uploadForm">
-                <div class="form-group">
-                    <label for="batch_id">Batch ID</label>
-                    <input type="text" id="batch_id" name="batch_id" value="test_batch_001" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="images">Select Images</label>
-                    <input type="file" id="images" name="images" multiple accept="image/*" required>
-                </div>
-
-                <button type="submit">Process Images</button>
-            </form>
-
-            <div id="status"></div>
-            <div id="resultImages" style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;"></div>
-        </div>
-
-        <script>
-            document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const statusDiv = document.getElementById('status');
-                const resultImages = document.getElementById('resultImages');
-                const submitBtn = form.querySelector('button');
-                
-                submitBtn.disabled = true;
-                submitBtn.innerText = "Uploading & Processing...";
-                statusDiv.style.display = 'block';
-                statusDiv.innerText = "Sending images to the API... (This may take a few seconds)";
-                statusDiv.style.backgroundColor = '#eff6ff';
-                statusDiv.style.color = '#1e40af';
-                resultImages.innerHTML = '';
-
-                const formData = new FormData();
-                const files = document.getElementById("images").files;
-                for(let i=0; i<files.length; i++) {
-                    formData.append("images", files[i]);
-                }
-
-                try {
-                    const response = await fetch('/api/predict_plates', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    const result = await response.json();
-                    
-                    statusDiv.innerText = `Final Plate: ${result.final_plate || 'None'}`;
-                    statusDiv.style.backgroundColor = '#ecfdf5';
-                    statusDiv.style.color = '#065f46';
-                    
-                    if (result.images) {
-                        result.images.forEach(img => {
-                            if (img.blurred_base64) {
-                                const imgTag = document.createElement('img');
-                                imgTag.src = img.blurred_base64;
-                                imgTag.style.maxWidth = '100%';
-                                imgTag.style.borderRadius = '8px';
-                                imgTag.style.border = '1px solid #d1d5db';
-                                
-                                const p = document.createElement('p');
-                                p.innerText = `${img.filename} - OCR: ${img.prediction || 'N/A'}`;
-                                p.style.fontWeight = 'bold';
-                                
-                                resultImages.appendChild(p);
-                                resultImages.appendChild(imgTag);
-                            }
-                        });
-                    }
-                } catch (error) {
-                    statusDiv.innerText = `Error: ${error.message}`;
-                    statusDiv.style.backgroundColor = '#fef2f2';
-                    statusDiv.style.color = '#991b1b';
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = "Process Images";
-                }
-            });
-        </script>
-    </body>
-    </html>
-    """
+    with open("index.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
     return HTMLResponse(content=html_content)
