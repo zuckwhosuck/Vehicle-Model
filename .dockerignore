@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.gitattributes
+ANPR-20260821T124307Z-1-001.zip
