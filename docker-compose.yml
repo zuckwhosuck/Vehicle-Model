@@ -8,6 +8,8 @@ services:
       - "8080:8080"
     volumes:
       - ./ANPR:/app/ANPR
+    env_file:
+      - .env
     restart: always
     deploy:
       resources:
