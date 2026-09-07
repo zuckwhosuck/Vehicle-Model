@@ -133,16 +133,20 @@ def blur_plate(image, box):
     return image
 
 @app.post("/api/predict_plates")
-async def predict_plates(images: list[UploadFile] = File(...), api_key: str = Depends(verify_api_key)):
+def predict_plates(images: list[UploadFile] = File(...), api_key: str = Depends(verify_api_key)):
     """
     Endpoint for JuniGadi to send bulk images synchronously.
     Returns the final predicted plate and the base64 encoded blurred images.
     """
+    import gc
+    import time
+    start_time = time.time()
+    
     votes = defaultdict(float)
     processed_images = []
 
     for img in images:
-        img_bytes = await img.read()
+        img_bytes = img.file.read()
         np_arr = np.frombuffer(img_bytes, np.uint8)
         image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         
@@ -155,13 +159,16 @@ async def predict_plates(images: list[UploadFile] = File(...), api_key: str = De
         
         if len(boxes) == 0:
             # If no plate found, we can just return the original image as base64 or skip
-            _, encoded_img = cv2.imencode('.jpg', image)
+            # Compress image to save bandwidth and memory
+            _, encoded_img = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
             b64_img = base64.b64encode(encoded_img).decode('utf-8')
             processed_images.append({
                 "filename": img.filename,
                 "blurred_base64": f"data:image/jpeg;base64,{b64_img}",
                 "plate_found": False
             })
+            del img_bytes, np_arr, image, encoded_img, b64_img
+            gc.collect()
             continue
 
         # Get best bounding box
@@ -175,6 +182,8 @@ async def predict_plates(images: list[UploadFile] = File(...), api_key: str = De
 
         crop = image[y1:y2, x1:x2]
         if crop.size == 0:
+            del img_bytes, np_arr, image
+            gc.collect()
             continue
 
         # OCR inference
@@ -186,7 +195,9 @@ async def predict_plates(images: list[UploadFile] = File(...), api_key: str = De
             
         # Blur the image
         blurred_image = blur_plate(image.copy(), (x1, y1, x2, y2))
-        _, encoded_img = cv2.imencode('.jpg', blurred_image)
+        
+        # Compress image to save bandwidth and memory
+        _, encoded_img = cv2.imencode('.jpg', blurred_image, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
         b64_img = base64.b64encode(encoded_img).decode('utf-8')
         
         processed_images.append({
@@ -196,13 +207,21 @@ async def predict_plates(images: list[UploadFile] = File(...), api_key: str = De
             "prediction": pred,
             "confidence": conf
         })
+        
+        # Clean up memory explicitly
+        del img_bytes, np_arr, image, crop, blurred_image, encoded_img, b64_img
+        gc.collect()
     
     # Vote for final plate
     final_plate = max(votes, key=votes.get) if votes else None
     
+    processing_time = round(time.time() - start_time, 2)
+    print(f"[{final_plate or 'NO PLATE'}] Processed {len(images)} images in {processing_time} seconds.")
+    
     return {
         "final_plate": final_plate,
         "images": processed_images,
+        "processing_time_seconds": processing_time,
         "status": "success"
     }
 
